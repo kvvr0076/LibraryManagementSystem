@@ -12,10 +12,12 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+
 def db_connection():
     conn = sqlite3.connect('data.sqlite')
     conn.row_factory = sqlite3.Row
     return conn
+
 
 class User(UserMixin):
     def __init__(self, id, username, password, role):
@@ -23,6 +25,7 @@ class User(UserMixin):
         self.username = username
         self.password = password
         self.role = role
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -36,6 +39,7 @@ def load_user(user_id):
         return User(user['id'], user['username'], user['password'], user['role'])
     return None
 
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -45,22 +49,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        conn = db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if user and user['password'] == password:
-            login_user(User(user['id'], user['username'], user['password'], user['role']))
-            return redirect(url_for('home'))
-        flash('Invalid username or password', 'danger')
-    return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -71,6 +59,8 @@ def signup():
 
         conn = db_connection()
         cursor = conn.cursor()
+
+        # Check if username already exists
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         if cursor.fetchone():
             flash("Username already exists. Choose another.", "danger")
@@ -87,11 +77,34 @@ def signup():
 
     return render_template('signup.html')
 
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        conn = db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if user and user['password'] == password:
+            login_user(User(user['id'], user['username'], user['password'], user['role']))
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid username or password', 'danger')
+    return render_template('login.html')
+
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
 
 @app.route('/')
 @login_required
@@ -122,6 +135,7 @@ def home():
                            total_borrowed=total_borrowed,
                            total_overdue=total_overdue)
 
+
 @app.route('/books')
 @login_required
 def books():
@@ -132,6 +146,7 @@ def books():
     cursor.close()
     conn.close()
     return render_template('books.html', books=books)
+
 
 @app.route('/add_book', methods=['GET', 'POST'])
 @login_required
@@ -155,6 +170,7 @@ def add_book():
         return redirect(url_for('books'))
     return render_template('add_book.html')
 
+
 @app.route('/edit_book/<int:book_id>', methods=['GET', 'POST'])
 @login_required
 def edit_book(book_id):
@@ -176,6 +192,7 @@ def edit_book(book_id):
     conn.close()
     return render_template('edit_book.html', book=book)
 
+
 @app.route('/delete_book/<int:book_id>')
 @login_required
 def delete_book(book_id):
@@ -188,6 +205,7 @@ def delete_book(book_id):
     flash('Book deleted.', 'warning')
     return redirect(url_for('books'))
 
+
 @app.route('/members')
 @login_required
 def members():
@@ -198,6 +216,7 @@ def members():
     cursor.close()
     conn.close()
     return render_template('members.html', members=members)
+
 
 @app.route('/add_member', methods=['GET', 'POST'])
 @login_required
@@ -216,6 +235,7 @@ def add_member():
         flash('Member added!', 'success')
         return redirect(url_for('members'))
     return render_template('add_member.html')
+
 
 @app.route('/edit_member/<int:member_id>', methods=['GET', 'POST'])
 @login_required
@@ -237,6 +257,7 @@ def edit_member(member_id):
     conn.close()
     return render_template('edit_member.html', member=member)
 
+
 @app.route('/delete_member/<int:member_id>')
 @login_required
 @admin_required
@@ -249,6 +270,7 @@ def delete_member(member_id):
     conn.close()
     flash('Member deleted.', 'warning')
     return redirect(url_for('members'))
+
 
 @app.route('/borrow')
 @login_required
@@ -267,6 +289,7 @@ def borrow():
     today = date.today()
     return render_template('borrow_return.html', records=records, today=today)
 
+
 @app.route('/search', methods=['GET', 'POST'])
 @login_required
 def search():
@@ -280,6 +303,7 @@ def search():
         cursor.close()
         conn.close()
     return render_template('search.html', books=books)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

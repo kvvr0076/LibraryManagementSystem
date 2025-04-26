@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from functools import wraps
-import mysql.connector
+import sqlite3
 from datetime import datetime, date
 import os
 
@@ -17,13 +17,9 @@ login_manager.login_view = 'login'
 
 # Database connection
 def db_connection():
-    return mysql.connector.connect(
-        host=os.environ.get("DB_HOST"),
-        user=os.environ.get("DB_USER"),
-        password=os.environ.get("DB_PASSWORD"),
-        database=os.environ.get("DB_NAME"),
-        port=int(os.environ.get("DB_PORT", 3306))
-    )
+    conn = sqlite3.connect('library.db')
+    conn.row_factory = sqlite3.Row  # allows you to use column names
+    return conn
 
 
 # User class for login

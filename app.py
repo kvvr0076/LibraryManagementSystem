@@ -8,18 +8,15 @@ app = Flask(__name__)
 app.secret_key = 'Kvvr@2001'
 app.jinja_env.globals.update(now=datetime.now)
 
-# Configure login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Database connection
 def db_connection():
-    conn = sqlite3.connect('data.sqlite')   # or your correct database file
+    conn = sqlite3.connect('data.sqlite')
     conn.row_factory = sqlite3.Row
     return conn
 
-# User class for login
 class User(UserMixin):
     def __init__(self, id, username, password, role):
         self.id = id
@@ -39,7 +36,6 @@ def load_user(user_id):
         return User(user['id'], user['username'], user['password'], user['role'])
     return None
 
-# Role-based decorator
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -49,7 +45,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Login route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -57,17 +52,16 @@ def login():
         password = request.form['password']
         conn = db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
-        if user:
+        if user and user['password'] == password:
             login_user(User(user['id'], user['username'], user['password'], user['role']))
             return redirect(url_for('home'))
-        flash('Invalid credentials', 'danger')
+        flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
-# Signup route
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -77,7 +71,6 @@ def signup():
 
         conn = db_connection()
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         if cursor.fetchone():
             flash("Username already exists. Choose another.", "danger")
@@ -94,14 +87,12 @@ def signup():
 
     return render_template('signup.html')
 
-# Logout
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# Dashboard
 @app.route('/')
 @login_required
 def home():
@@ -114,10 +105,13 @@ def home():
     cursor.execute("SELECT COUNT(*) FROM members")
     total_members = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM borrow_records WHERE return_date IS NULL")
+    cursor.execute("SELECT COUNT(*) FROM borrow_records WHERE return_date IS NULL OR return_date = ''")
     total_borrowed = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM borrow_records WHERE return_date IS NULL AND due_date < DATE('now')")
+    cursor.execute("""
+        SELECT COUNT(*) FROM borrow_records
+        WHERE (return_date IS NULL OR return_date = '') AND due_date < DATE('now')
+    """)
     total_overdue = cursor.fetchone()[0]
 
     cursor.close()
@@ -128,7 +122,6 @@ def home():
                            total_borrowed=total_borrowed,
                            total_overdue=total_overdue)
 
-# Book Routes
 @app.route('/books')
 @login_required
 def books():
@@ -195,7 +188,6 @@ def delete_book(book_id):
     flash('Book deleted.', 'warning')
     return redirect(url_for('books'))
 
-# Members
 @app.route('/members')
 @login_required
 def members():
@@ -258,7 +250,6 @@ def delete_member(member_id):
     flash('Member deleted.', 'warning')
     return redirect(url_for('members'))
 
-# Borrow/Return
 @app.route('/borrow')
 @login_required
 def borrow():
@@ -276,7 +267,6 @@ def borrow():
     today = date.today()
     return render_template('borrow_return.html', records=records, today=today)
 
-# Search
 @app.route('/search', methods=['GET', 'POST'])
 @login_required
 def search():
@@ -291,6 +281,5 @@ def search():
         conn.close()
     return render_template('search.html', books=books)
 
-# Run app
 if __name__ == '__main__':
     app.run(debug=True)

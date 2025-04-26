@@ -3,6 +3,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from functools import wraps
 import mysql.connector
 from datetime import datetime, date
+import os
 
 app = Flask(__name__)
 app.secret_key = 'Kvvr@2001'
@@ -17,11 +18,11 @@ login_manager.login_view = 'login'
 # Database connection
 def db_connection():
     return mysql.connector.connect(
-        host="sql3.freesqldatabase.com",
-        user="sql3775460",
-        password="Yh6x3YCMuu",
-        database="sql3775460",
-        port=3306
+        host=os.environ.get("DB_HOST"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD"),
+        database=os.environ.get("DB_NAME"),
+        port=int(os.environ.get("DB_PORT", 3306))
     )
 
 

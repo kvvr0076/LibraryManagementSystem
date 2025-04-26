@@ -17,10 +17,11 @@ login_manager.login_view = 'login'
 # Database connection
 def db_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="Kvvr@2001",
-        database="librarydb"
+        host="sql3.freesqldatabase.com",
+        user="sql3775460",
+        password="Yh6x3YCMuu",
+        database="sql3775460",
+        port=3306
     )
 
 

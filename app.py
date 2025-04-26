@@ -61,13 +61,12 @@ def signup():
         cursor = conn.cursor()
 
         # Check if username already exists
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
         if cursor.fetchone():
             flash("Username already exists. Choose another.", "danger")
             return redirect(url_for('signup'))
 
-        cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                       (username, password, role))
+        cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
         conn.commit()
         cursor.close()
         conn.close()
@@ -86,16 +85,18 @@ def login():
 
         conn = db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT id, username, password, role FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
 
-        if user and user['password'] == password:
-            login_user(User(user['id'], user['username'], user['password'], user['role']))
-            return redirect(url_for('home'))
-        else:
-            flash('Invalid username or password', 'danger')
+        if user:
+            db_password = user['password']
+            if password == db_password:
+                login_user(User(user['id'], user['username'], user['password'], user['role']))
+                return redirect(url_for('home'))
+
+        flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
 

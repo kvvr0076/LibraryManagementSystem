@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect('library.db')
+conn = sqlite3.connect('data.sqlite')
 cursor = conn.cursor()
 
 # Insert admin user

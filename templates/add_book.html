@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Add a New Book</h2>
+<form method="post">
+    <input type="text" name="title" class="form-control mb-2" placeholder="Title" required>
+    <input type="text" name="author" class="form-control mb-2" placeholder="Author" required>
+    <input type="text" name="isbn" class="form-control mb-2" placeholder="ISBN">
+    <input type="number" name="quantity" class="form-control mb-2" placeholder="Quantity" required>
+    <button class="btn btn-success">Add Book</button>
+</form>
+{% endblock %}

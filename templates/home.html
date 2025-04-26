@@ -1,0 +1,39 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<div class="row text-center">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5>Total Books</h5>
+                <p class="display-6">{{ total_books }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5>Total Members</h5>
+                <p class="display-6">{{ total_members }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <h5>Borrowed</h5>
+                <p class="display-6">{{ total_borrowed }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5>Overdue</h5>
+                <p class="display-6">{{ total_overdue }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

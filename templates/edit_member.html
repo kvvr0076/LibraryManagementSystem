@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h2>Edit Member</h2>
+<form method="post">
+    <input type="text" name="name" value="{{ member.name }}" class="form-control mb-2" required>
+    <input type="email" name="email" value="{{ member.email }}" class="form-control mb-2" required>
+    <input type="text" name="phone" value="{{ member.phone }}" class="form-control mb-2" required>
+    <button class="btn btn-primary">Update Member</button>
+    <a href="{{ url_for('members') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Search Books</h2>
+<form method="post">
+    <input type="text" name="keyword" class="form-control mb-2" placeholder="Search by Title or Author" required>
+    <button class="btn btn-primary">Search</button>
+</form>
+
+{% if books %}
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>ID</th><th>Title</th><th>Author</th><th>Quantity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for book in books %}
+        <tr>
+            <td>{{ book.id }}</td>
+            <td>{{ book.title }}</td>
+            <td>{{ book.author }}</td>
+            <td>{{ book.quantity }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

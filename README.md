@@ -61,24 +61,25 @@ A complete Library Management System built with Flask and MySQL, fully working o
 ## Folder Structure
 
 LibraryManagementSystem/
-    ├── app.py
-    ├── requirements.txt
-    ├── templates/
-    │   ├── layout.html
-    │   ├── login.html
-    │   ├── signup.html
-    │   ├── books.html
-    │   ├── members.html
-    │   ├── borrow_return.html
-    │   ├── lend_book.html
-    │   ├── manage_users.html
-    │   ├── edit_book.html
-    │   ├── edit_member.html
-    │   ├── edit_user.html
-    │   ├── home.html
-    │   ├── search.html
-    ├── static/
-    │   ├── style.css
+- app.py
+- requirements.txt
+- templates/
+  - layout.html
+  - login.html
+  - signup.html
+  - books.html
+  - members.html
+  - borrow_return.html
+  - lend_book.html
+  - manage_users.html
+  - edit_book.html
+  - edit_member.html
+  - edit_user.html
+  - home.html
+  - search.html
+- static/
+  - style.css
+
 
 
 

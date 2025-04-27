@@ -11,6 +11,7 @@
             <th>Borrow Date</th>
             <th>Due Date</th>
             <th>Return Date</th>
+            <th>Action</th>
         </tr>
     </thead>
     <tbody>
@@ -26,6 +27,13 @@
             <td>{{ record.borrow_date }}</td>
             <td>{{ record.due_date if record.due_date else "N/A" }}</td>
             <td>{{ record.return_date if record.return_date else "Not Returned" }}</td>
+            <td>
+                {% if not record.return_date %}
+                <a href="{{ url_for('return_book', record_id=record.id) }}" class="btn btn-sm btn-success">Return</a>
+                {% else %}
+                Returned
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>

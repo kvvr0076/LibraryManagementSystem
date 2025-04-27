@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from functools import wraps
-import sqlite3
-from datetime import datetime, date
+import mysql.connector
+from datetime import datetime, date, timedelta
+
 
 app = Flask(__name__)
 app.secret_key = 'Kvvr@2001'
@@ -14,9 +15,12 @@ login_manager.login_view = 'login'
 
 
 def db_connection():
-    conn = sqlite3.connect('data.sqlite')
-    conn.row_factory = sqlite3.Row
-    return conn
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="Kvvr@2001",
+        database="librarydb"
+    )
 
 
 class User(UserMixin):
@@ -30,8 +34,8 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     conn = db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
     user = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -53,20 +57,22 @@ def admin_required(f):
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        phone = request.form['phone']
         username = request.form['username']
         password = request.form['password']
-        role = request.form.get('role', 'librarian')
+        role = 'librarian'  # Default role
 
         conn = db_connection()
-        cursor = conn.cursor()
-
-        # Check if username already exists
-        cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
         if cursor.fetchone():
             flash("Username already exists. Choose another.", "danger")
             return redirect(url_for('signup'))
 
-        cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, role) VALUES (%s, %s, %s, %s, %s, %s)",
+                       (name, email, phone, username, password, role))
         conn.commit()
         cursor.close()
         conn.close()
@@ -84,19 +90,17 @@ def login():
         password = request.form['password']
 
         conn = db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, username, password, role FROM users WHERE username = ?", (username,))
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
 
-        if user:
-            db_password = user['password']
-            if password == db_password:
-                login_user(User(user['id'], user['username'], user['password'], user['role']))
-                return redirect(url_for('home'))
-
-        flash('Invalid username or password', 'danger')
+        if user and user['password'] == password:
+            login_user(User(user['id'], user['username'], user['password'], user['role']))
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
 
@@ -111,22 +115,19 @@ def logout():
 @login_required
 def home():
     conn = db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT COUNT(*) FROM books")
-    total_books = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) AS total FROM books")
+    total_books = cursor.fetchone()['total']
 
-    cursor.execute("SELECT COUNT(*) FROM members")
-    total_members = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) AS total FROM members")
+    total_members = cursor.fetchone()['total']
 
-    cursor.execute("SELECT COUNT(*) FROM borrow_records WHERE return_date IS NULL OR return_date = ''")
-    total_borrowed = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) AS total FROM borrow_records WHERE return_date IS NULL")
+    total_borrowed = cursor.fetchone()['total']
 
-    cursor.execute("""
-        SELECT COUNT(*) FROM borrow_records
-        WHERE (return_date IS NULL OR return_date = '') AND due_date < DATE('now')
-    """)
-    total_overdue = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) AS total FROM borrow_records WHERE return_date IS NULL AND due_date < CURDATE()")
+    total_overdue = cursor.fetchone()['total']
 
     cursor.close()
     conn.close()
@@ -141,7 +142,7 @@ def home():
 @login_required
 def books():
     conn = db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM books")
     books = cursor.fetchall()
     cursor.close()
@@ -160,14 +161,27 @@ def add_book():
         author = request.form['author']
         isbn = request.form['isbn']
         quantity = request.form['quantity']
+
         conn = db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO books (title, author, isbn, quantity) VALUES (?, ?, ?, ?)",
-                       (title, author, isbn, quantity))
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if book already exists (by title and author)
+        cursor.execute("SELECT * FROM books WHERE title = %s AND author = %s", (title, author))
+        existing_book = cursor.fetchone()
+
+        if existing_book:
+            # Update quantity if book already exists
+            cursor.execute("UPDATE books SET quantity = quantity + %s WHERE id = %s", (quantity, existing_book['id']))
+            flash('Book already exists. Quantity updated!', 'info')
+        else:
+            # Insert new book
+            cursor.execute("INSERT INTO books (title, author, isbn, quantity) VALUES (%s, %s, %s, %s)",
+                           (title, author, isbn, quantity))
+            flash('New book added!', 'success')
+
         conn.commit()
         cursor.close()
         conn.close()
-        flash('Book added!', 'success')
         return redirect(url_for('books'))
     return render_template('add_book.html')
 
@@ -176,18 +190,18 @@ def add_book():
 @login_required
 def edit_book(book_id):
     conn = db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     if request.method == 'POST':
         title = request.form['title']
         author = request.form['author']
         isbn = request.form['isbn']
         quantity = request.form['quantity']
-        cursor.execute("UPDATE books SET title=?, author=?, isbn=?, quantity=? WHERE id=?",
+        cursor.execute("UPDATE books SET title=%s, author=%s, isbn=%s, quantity=%s WHERE id=%s",
                        (title, author, isbn, quantity, book_id))
         conn.commit()
         flash('Book updated!', 'success')
         return redirect(url_for('books'))
-    cursor.execute("SELECT * FROM books WHERE id = ?", (book_id,))
+    cursor.execute("SELECT * FROM books WHERE id = %s", (book_id,))
     book = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -199,7 +213,7 @@ def edit_book(book_id):
 def delete_book(book_id):
     conn = db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))
+    cursor.execute("DELETE FROM books WHERE id = %s", (book_id,))
     conn.commit()
     cursor.close()
     conn.close()
@@ -207,11 +221,112 @@ def delete_book(book_id):
     return redirect(url_for('books'))
 
 
+@app.route('/lend', methods=['GET', 'POST'])
+@login_required
+def lend_book():
+    conn = db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT id, title FROM books WHERE quantity > 0")
+    books = cursor.fetchall()
+
+    cursor.execute("SELECT id, name FROM members")
+    members = cursor.fetchall()
+
+    if request.method == 'POST':
+        book_id = request.form['book_id']
+        member_id = request.form['member_id']
+        borrow_date = date.today()
+        due_date = borrow_date + timedelta(days=7)  # ✅ Correct way to add 7 days
+
+        cursor.execute("INSERT INTO borrow_records (book_id, member_id, borrow_date, due_date) VALUES (%s, %s, %s, %s)",
+                       (book_id, member_id, borrow_date, due_date))
+
+        cursor.execute("UPDATE books SET quantity = quantity - 1 WHERE id = %s", (book_id,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash('Book issued successfully!', 'success')
+        return redirect(url_for('borrow'))
+
+    cursor.close()
+    conn.close()
+    return render_template('lend_book.html', books=books, members=members)
+
+
+@app.route('/return_book/<int:record_id>')
+@login_required
+def return_book(record_id):
+    conn = db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE borrow_records SET return_date = CURDATE() WHERE id = %s", (record_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash('Book marked as returned.', 'success')
+    return redirect(url_for('borrow'))
+
+
+@app.route('/users')
+@login_required
+@admin_required
+def manage_users():
+    conn = db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users WHERE role != 'admin'")  # optional: prevent admin from being listed
+    users = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('manage_users.html', users=users)
+
+
+@app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_user(user_id):
+    conn = db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        phone = request.form['phone']
+        username = request.form['username']
+        password = request.form['password']
+
+        cursor.execute("UPDATE users SET name=%s, email=%s, phone=%s, username=%s, password=%s WHERE id=%s",
+                       (name, email, phone, username, password, user_id))
+        conn.commit()
+        flash('User updated successfully.', 'success')
+        return redirect(url_for('manage_users'))
+
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return render_template('edit_user.html', user=user)
+
+
+@app.route('/delete_user/<int:user_id>')
+@login_required
+@admin_required
+def delete_user(user_id):
+    conn = db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash('User deleted successfully.', 'warning')
+    return redirect(url_for('manage_users'))
+
+
 @app.route('/members')
 @login_required
 def members():
     conn = db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM members")
     members = cursor.fetchall()
     cursor.close()
@@ -227,13 +342,23 @@ def add_member():
         name = request.form['name']
         email = request.form['email']
         phone = request.form['phone']
+
         conn = db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO members (name, email, phone) VALUES (?, ?, ?)", (name, email, phone))
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if member already exists (by name and email)
+        cursor.execute("SELECT * FROM members WHERE name = %s AND email = %s", (name, email))
+        existing_member = cursor.fetchone()
+
+        if existing_member:
+            flash('Member already exists!', 'danger')
+            return redirect(url_for('members'))
+
+        cursor.execute("INSERT INTO members (name, email, phone) VALUES (%s, %s, %s)", (name, email, phone))
         conn.commit()
         cursor.close()
         conn.close()
-        flash('Member added!', 'success')
+        flash('Member added successfully!', 'success')
         return redirect(url_for('members'))
     return render_template('add_member.html')
 
@@ -243,16 +368,17 @@ def add_member():
 @admin_required
 def edit_member(member_id):
     conn = db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
         phone = request.form['phone']
-        cursor.execute("UPDATE members SET name=?, email=?, phone=? WHERE id=?", (name, email, phone, member_id))
+        cursor.execute("UPDATE members SET name=%s, email=%s, phone=%s WHERE id=%s",
+                       (name, email, phone, member_id))
         conn.commit()
         flash('Member updated!', 'success')
         return redirect(url_for('members'))
-    cursor.execute("SELECT * FROM members WHERE id = ?", (member_id,))
+    cursor.execute("SELECT * FROM members WHERE id = %s", (member_id,))
     member = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -265,7 +391,7 @@ def edit_member(member_id):
 def delete_member(member_id):
     conn = db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM members WHERE id = ?", (member_id,))
+    cursor.execute("DELETE FROM members WHERE id = %s", (member_id,))
     conn.commit()
     cursor.close()
     conn.close()
@@ -277,7 +403,7 @@ def delete_member(member_id):
 @login_required
 def borrow():
     conn = db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     cursor.execute("""
         SELECT br.id, b.title, m.name, br.borrow_date, br.return_date, br.due_date
         FROM borrow_records br
@@ -298,8 +424,8 @@ def search():
     if request.method == 'POST':
         keyword = request.form['keyword']
         conn = db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM books WHERE title LIKE ? OR author LIKE ?", (f'%{keyword}%', f'%{keyword}%'))
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM books WHERE title LIKE %s OR author LIKE %s", (f"%{keyword}%", f"%{keyword}%"))
         books = cursor.fetchall()
         cursor.close()
         conn.close()

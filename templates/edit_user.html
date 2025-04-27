@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Edit User</h2>
+<form method="POST">
+    <input type="text" name="name" value="{{ user.name or '' }}" class="form-control mb-2" placeholder="Name" required>
+    <input type="email" name="email" value="{{ user.email or '' }}" class="form-control mb-2" placeholder="Email" required>
+    <input type="text" name="phone" value="{{ user.phone or '' }}" class="form-control mb-2" placeholder="Phone" required>
+    <input type="text" name="username" value="{{ user.username or '' }}" class="form-control mb-2" placeholder="Username" required>
+    <input type="text" name="password" value="{{ user.password or '' }}" class="form-control mb-2" placeholder="Password" required>
+    <button class="btn btn-primary">Update User</button>
+    <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

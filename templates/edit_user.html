@@ -8,6 +8,17 @@
     <input type="text" name="phone" value="{{ user.phone or '' }}" class="form-control mb-2" placeholder="Phone" required>
     <input type="text" name="username" value="{{ user.username or '' }}" class="form-control mb-2" placeholder="Username" required>
     <input type="text" name="password" value="{{ user.password or '' }}" class="form-control mb-2" placeholder="Password" required>
+
+    <select name="role" class="form-control mb-2" required>
+    {% if user.role == 'librarian' %}
+    <option value="librarian" selected>Librarian</option>
+    <option value="admin">Admin</option>
+    {% else %}
+    <option value="librarian">Librarian</option>
+    <option value="admin" selected>Admin</option>
+    {% endif %}
+</select>
+
     <button class="btn btn-primary">Update User</button>
     <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">Cancel</a>
 </form>

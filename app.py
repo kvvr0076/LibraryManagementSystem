@@ -304,11 +304,15 @@ def add_user():
 def manage_users():
     conn = db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE role != 'admin'")  # optional: prevent admin from being listed
+    cursor.execute("SELECT * FROM users")
     users = cursor.fetchall()
+
+    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role = 'admin'")
+    total_admins = cursor.fetchone()['total']
+
     cursor.close()
     conn.close()
-    return render_template('manage_users.html', users=users)
+    return render_template('manage_users.html', users=users, total_admins=total_admins)
 
 
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
@@ -324,9 +328,10 @@ def edit_user(user_id):
         phone = request.form['phone']
         username = request.form['username']
         password = request.form['password']
+        role = request.form['role']
 
-        cursor.execute("UPDATE users SET name=%s, email=%s, phone=%s, username=%s, password=%s WHERE id=%s",
-                       (name, email, phone, username, password, user_id))
+        cursor.execute("UPDATE users SET name=%s, email=%s, phone=%s, username=%s, password=%s, role=%s WHERE id=%s",
+                       (name, email, phone, username, password, role, user_id))
         conn.commit()
         flash('User updated successfully.', 'success')
         return redirect(url_for('manage_users'))

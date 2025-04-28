@@ -1,0 +1,18 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Add New User</h2>
+<form method="POST">
+    <input type="text" name="name" class="form-control mb-2" placeholder="Name" required>
+    <input type="email" name="email" class="form-control mb-2" placeholder="Email" required>
+    <input type="text" name="phone" class="form-control mb-2" placeholder="Phone" required>
+    <input type="text" name="username" class="form-control mb-2" placeholder="Username" required>
+    <input type="text" name="password" class="form-control mb-2" placeholder="Password" required>
+    <select name="role" class="form-control mb-2" required>
+        <option value="librarian" selected>Librarian</option>
+        <option value="admin">Admin</option>
+    </select>
+    <button class="btn btn-success">Add User</button>
+    <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

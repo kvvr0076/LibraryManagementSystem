@@ -268,6 +268,36 @@ def return_book(record_id):
     return redirect(url_for('borrow'))
 
 
+@app.route('/add_user', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def add_user():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        phone = request.form['phone']
+        username = request.form['username']
+        password = request.form['password']
+        role = request.form['role']
+
+        conn = db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        if cursor.fetchone():
+            flash('Username already exists. Choose another.', 'danger')
+            return redirect(url_for('add_user'))
+
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, role) VALUES (%s, %s, %s, %s, %s, %s)",
+                       (name, email, phone, username, password, role))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash('New user added successfully.', 'success')
+        return redirect(url_for('manage_users'))
+
+    return render_template('add_user.html')
+
+
 @app.route('/users')
 @login_required
 @admin_required
